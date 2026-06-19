@@ -22,6 +22,12 @@ export interface RawStructuredEvent {
   status: string; // resolved | unresolved | pending
 }
 
+/** Normalized facts used for deterministic contradiction detection. */
+export interface Facts {
+  occupancy?: 'in_house' | 'empty';
+  missingApproval?: boolean;
+}
+
 /** Model OBSERVATIONS extracted from text. Code maps these to flags/buckets — never the model. */
 export interface Signals {
   roomIdentifiable?: boolean;
@@ -51,7 +57,7 @@ export interface NormalizedEvent {
   category: string; // canonical category, 'other' fallback
   rawType?: string; // original structured type
   status: Status;
-  facts: Record<string, unknown>; // normalized facts for deterministic contradiction detection
+  facts: Facts;
   signals: Signals;
   description: string; // English (translated at extraction), never invented
   sourceRef: SourceRef;

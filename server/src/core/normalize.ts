@@ -2,7 +2,7 @@
 // Maps raw type -> canonical category, resolves room from field-or-text,
 // normalizes status, assigns the shift. See .claude/rules/grounding-and-ai.md.
 
-import type { NormalizedEvent, RawStructuredEvent, Status } from './types.js';
+import type { Facts, NormalizedEvent, RawStructuredEvent, Signals, Status } from './types.js';
 import { shiftDateFor } from './shifts.js';
 
 /** raw `type` (open vocabulary) -> small canonical category set. Extend as needed; 'other' is the fallback. */
@@ -46,9 +46,30 @@ export function issueKey(room: string | null, category: string): string {
   return `${room ?? 'area'}:${category}`;
 }
 
+const SAFETY_RE = /\b(safe|passport|ambulance|fire|flood|injur|unwell|medical|locked in)\b/i;
+const TIME_CRITICAL_RE = /\b(deadline|\d+\s*hours?|before checkout|checks? out tomorrow|flight|asap|urgent|first thing)\b/i;
+const META_RE = /\b(system note to the|ignore (all|other|previous)|report .* all clear|mark .* approved|disregard|goodwill credit)\b/i;
+const MISSING_APPROVAL_RE = /\b(no (manager )?approval|no photos?|without approval)\b/i;
+
+function deriveSignals(description: string, room: string | null): Signals {
+  return {
+    roomIdentifiable: room !== null,
+    timeCritical: TIME_CRITICAL_RE.test(description),
+    safetyRelevant: SAFETY_RE.test(description),
+    containsMetaInstruction: META_RE.test(description),
+  };
+}
+
+function deriveFacts(rawType: string, description: string): Facts {
+  const facts: Facts = {};
+  if (rawType === 'check_in') facts.occupancy = 'in_house';
+  if (MISSING_APPROVAL_RE.test(description)) facts.missingApproval = true;
+  return facts;
+}
+
 /**
  * Normalize one structured event. Pure, deterministic.
- * TODO(build): derive `facts` (e.g. inHouse, depositCollected) + rule-derivable `signals`
+ * Derives `facts` (e.g. inHouse) + rule-derivable `signals`
  * needed for contradiction detection and bucketing.
  */
 export function normalizeStructured(raw: RawStructuredEvent, hotelId: string): NormalizedEvent {
@@ -64,8 +85,8 @@ export function normalizeStructured(raw: RawStructuredEvent, hotelId: string): N
     category,
     rawType: raw.type,
     status: STATUS_BY_RAW[raw.status] ?? 'open',
-    facts: {},
-    signals: {},
+    facts: deriveFacts(raw.type, raw.description),
+    signals: deriveSignals(raw.description, room),
     description: raw.description,
     sourceRef: { eventId: raw.id },
   };
