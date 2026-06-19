@@ -76,20 +76,24 @@ describe('extractProse', () => {
     expect(validSet.has('meta')).toBe(false);
   });
 
-  it('drops an event whose excerpt is not in the source (anti-hallucination)', async () => {
+  it('withholds an unverified event from `events` but surfaces it for review (anti-hallucination)', async () => {
     const liar: LlmClient = {
       extract: async () => ({
         shiftDate: '2026-05-28',
         events: [
-          { room: '999', category: 'note', status: 'open',
-            description: 'fabricated', excerpt: 'this text is not in the source', confidence: 'low',
-            roomIdentifiable: true, timeCritical: false, safetyRelevant: false, containsMetaInstruction: false },
+          { room: '208', category: 'maintenance', status: 'open',
+            description: 'safe jammed', excerpt: 'this text is not in the source', confidence: 'low',
+            roomIdentifiable: true, timeCritical: true, safetyRelevant: true, containsMetaInstruction: false },
         ],
       }),
     };
-    const { events, trace } = await extractProse(input, 'lumen-sg', liar);
-    expect(events).toHaveLength(0);
+    const { events, review, trace } = await extractProse(input, 'lumen-sg', liar);
+    expect(events).toHaveLength(0); // never asserted as a fact
     expect(trace[0].quoteVerified).toBe(false);
+    // ...but never silently lost: it surfaces for review, carrying its criticality signals
+    expect(review).toHaveLength(1);
+    expect(review[0].room).toBe('208');
+    expect(review[0].safetyRelevant).toBe(true);
   });
 
   it('throws if shift date cannot be resolved (no model date, no overrideDate)', async () => {

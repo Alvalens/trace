@@ -4,5 +4,5 @@
 type Level = 'info' | 'warn' | 'error';
 
 export function log(level: Level, event: string, data: Record<string, unknown> = {}): void {
-  process.stdout.write(JSON.stringify({ level, event, ...data }) + '\n');
+  process.stdout.write(JSON.stringify({ time: new Date().toISOString(), level, event, ...data }) + '\n');
 }

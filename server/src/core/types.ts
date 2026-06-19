@@ -3,7 +3,7 @@
 
 export type Source = 'structured' | 'prose';
 export type Status = 'open' | 'resolved' | 'pending';
-export type FlagType = 'contradiction' | 'incomplete' | 'stale' | 'anomalous';
+export type FlagType = 'contradiction' | 'incomplete' | 'stale' | 'anomalous' | 'unverified';
 export type BucketName = 'critical' | 'pending' | 'info' | 'flags';
 export type Classification =
   | 'new_tonight'
@@ -61,6 +61,19 @@ export interface NormalizedEvent {
   signals: Signals;
   description: string; // English (translated at extraction), never invented
   sourceRef: SourceRef;
+}
+
+/**
+ * An extraction whose verbatim excerpt did NOT match the source. We refuse to assert
+ * it as a fact (it never enters threads/buckets), but we never silently drop it either:
+ * it surfaces as an `unverified` flag pointing a human at the original line.
+ */
+export interface ReviewItem {
+  room: string | null;
+  line?: number;
+  excerpt?: string; // model's claimed (unverified) excerpt — for locating the source line only
+  timeCritical?: boolean;
+  safetyRelevant?: boolean;
 }
 
 /** A reconciled issue across nights: one issue-key, full history. */

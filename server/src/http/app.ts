@@ -5,7 +5,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import fs from 'node:fs';
 import path from 'node:path';
 import { log } from './logging.js';
-import { getEvents, hasProse, addEvents } from '../ingest/store.js';
+import { getEvents, hasProse, addEvents, addReview, getReview } from '../ingest/store.js';
 import { buildHandover } from '../core/handover.js';
 import { extractProse } from '../ingest/extractProse.js';
 import { GeminiClient } from '../ingest/gemini.js';
@@ -17,6 +17,16 @@ const gemini = new GeminiClient();
 export function createApp(): express.Express {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
+
+  // Request log: every call gets one line with method / path / status / latency — so a bad
+  // handover can be traced to the exact request that produced it. See logging.ts.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      log('info', 'request', { method: req.method, path: req.path, status: res.statusCode, ms: Date.now() - start });
+    });
+    next();
+  });
 
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ ok: true });
@@ -33,11 +43,12 @@ export function createApp(): express.Express {
     }
     const overrideDate = typeof body.date === 'string' && body.date.trim() !== '' ? body.date.trim() : undefined;
     try {
-      const { events, trace } = await extractProse(text, hotel, gemini, overrideDate);
+      const { events, review, trace } = await extractProse(text, hotel, gemini, overrideDate);
       addEvents(hotel, events);
+      addReview(hotel, review);
       setLastRun(hotel, new Date().toISOString(), trace);
-      log('info', 'ingest.done', { hotel, extracted: events.length, dropped: trace.filter((t) => !t.quoteVerified).length });
-      res.json({ events, trace });
+      log('info', 'ingest.done', { hotel, extracted: events.length, unverified: review.length });
+      res.json({ events, review, trace });
     } catch (err) {
       next(err);
     }
@@ -52,7 +63,7 @@ export function createApp(): express.Express {
       res.status(404).json({ error: `unknown hotel: ${hotel}` });
       return;
     }
-    const handover = buildHandover(events, { hotel, date, proseNightIngested: hasProse(hotel) });
+    const handover = buildHandover(events, { hotel, date, proseNightIngested: hasProse(hotel), review: getReview(hotel) });
     log('info', 'handover.served', {
       hotel, date: handover.date, eventsConsidered: handover.meta.eventsConsidered,
       counts: Object.fromEntries(Object.entries(handover.buckets).map(([k, v]) => [k, v.length])),

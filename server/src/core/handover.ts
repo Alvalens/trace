@@ -1,7 +1,7 @@
 // Pure handover assembly: reconcile -> classify -> flag -> bucket.
 // Deterministic; the single entry point the query route calls. NO LLM.
 
-import type { BucketName, Handover, HandoverItem, NormalizedEvent, Thread } from './types.js';
+import type { BucketName, Handover, HandoverItem, NormalizedEvent, ReviewItem, Thread } from './types.js';
 import { reconcileThreads } from './reconcile.js';
 import { detectFlags } from './flags.js';
 import { titleOf } from './format.js';
@@ -11,6 +11,8 @@ export interface BuildOptions {
   hotel: string;
   date?: string;
   proseNightIngested: boolean;
+  /** Unverified extractions to surface as `unverified` flags (never silently dropped). */
+  review?: ReviewItem[];
 }
 
 /**
@@ -25,6 +27,7 @@ export function buildHandover(allEvents: NormalizedEvent[], opts: BuildOptions):
   const { items: flagItems, flaggedKeys } = detectFlags(threads, target);
 
   const buckets: Record<BucketName, HandoverItem[]> = { critical: [], pending: [], info: [], flags: flagItems };
+  for (const r of opts.review ?? []) buckets.flags.push(unverifiedFlag(r));
   for (const t of threads) {
     if (flaggedKeys.has(t.issueKey)) continue;
     const item = toItem(t);
@@ -53,6 +56,26 @@ function toItem(t: Thread): HandoverItem {
     classification: t.classification,
     sourceIds: t.events.map((e) => e.id),
     thread: t.events,
+  };
+}
+
+/**
+ * An unverified extraction: never asserted as a fact (no thread, no normal bucket), but
+ * surfaced so a human can check the source line. If the model marked it time/safety-critical,
+ * say so in the reason — a critical line must never vanish just because its excerpt didn't match.
+ */
+function unverifiedFlag(r: ReviewItem): HandoverItem {
+  const where = r.room ? `Room ${r.room}` : r.line ? `prose line ${r.line}` : 'prose log';
+  const urgent = r.safetyRelevant || r.timeCritical ? ' Model flagged it safety/time-critical — review urgently.' : '';
+  return {
+    issueKey: `${r.room ?? 'prose'}:unverified${r.line ? `:${r.line}` : ''}`,
+    title: `${where}: unverified extraction — check the source line`,
+    status: 'open',
+    classification: 'new_tonight',
+    sourceIds: r.line ? [`prose:line:${r.line}`] : ['prose'],
+    flagType: 'unverified',
+    reason: `The model's excerpt did not match the source verbatim, so this was withheld from the buckets rather than asserted.${urgent}`,
+    thread: [],
   };
 }
 
