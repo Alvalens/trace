@@ -48,7 +48,7 @@ export class GeminiClient implements LlmClient {
   }
   async extract(input: string): Promise<unknown> {
     const res = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: input,
       config: { systemInstruction: SYSTEM, responseMimeType: 'application/json', responseSchema: PROSE_SCHEMA },
     });
