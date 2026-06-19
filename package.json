@@ -1,0 +1,9 @@
+{
+  "name": "night-handover",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "npm --prefix server ci && npm --prefix server run build && npm --prefix client ci && npm --prefix client run build",
+    "start": "node server/dist/index.js"
+  }
+}

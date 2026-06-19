@@ -72,7 +72,7 @@ export function createApp(): express.Express {
   });
 
   // Serve the built React client in production, if present (single-container deploy).
-  const clientDist = path.resolve(process.cwd(), '../client/dist');
+  const clientDist = process.env.CLIENT_DIST ?? path.resolve(process.cwd(), '../client/dist');
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist));
     app.get('*', (_req: Request, res: Response) => {
