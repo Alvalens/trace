@@ -10,6 +10,7 @@ import { buildHandover } from '../core/handover.js';
 import { extractProse } from '../ingest/extractProse.js';
 import { GeminiClient } from '../ingest/gemini.js';
 import { setLastRun, getLastRun } from '../ingest/lastRun.js';
+import { renderHandoverHtml } from './htmlView.js';
 
 const gemini = new GeminiClient();
 
@@ -54,6 +55,10 @@ export function createApp(): express.Express {
       hotel, date: handover.date, eventsConsidered: handover.meta.eventsConsidered,
       counts: Object.fromEntries(Object.entries(handover.buckets).map(([k, v]) => [k, v.length])),
     });
+    if (req.accepts(['json', 'html']) === 'html') {
+      res.type('html').send(renderHandoverHtml(handover));
+      return;
+    }
     res.json(handover);
   });
 
