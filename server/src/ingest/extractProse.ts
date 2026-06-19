@@ -3,7 +3,7 @@
 // events; each carries a verbatim original-language excerpt that we quote-verify.
 // See .claude/rules/grounding-and-ai.md.
 
-import type { NormalizedEvent } from '../core/types.js';
+import type { Facts, NormalizedEvent, Signals, Status } from '../core/types.js';
 
 /** Minimal LLM seam so the extractor is mockable in tests (clean-code rules). */
 export interface LlmClient {
@@ -33,17 +33,61 @@ export function quoteVerify(excerpt: string | undefined, source: string): boolea
   return source.includes(excerpt);
 }
 
-/**
- * Extract prose -> normalized events. Pure orchestration around the LLM seam:
- * call client -> validate schema -> quote-verify (drop/flag failures) -> map.
- *
- * TODO(build): build the responseSchema prompt, validate output, run quoteVerify,
- * assign shiftDate + issueKey, and emit the trace.
- */
+interface RawExtracted {
+  room: string | null;
+  category: string;
+  status: Status;
+  shiftDate: string;
+  description: string;
+  excerpt: string;
+  excerptEn?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  occupancyObserved?: 'in_house' | 'empty';
+  line?: number;
+  roomIdentifiable?: boolean;
+  timeCritical?: boolean;
+  safetyRelevant?: boolean;
+  containsMetaInstruction?: boolean;
+}
+
 export async function extractProse(
-  _input: string,
-  _hotelId: string,
-  _client: LlmClient,
+  input: string,
+  hotelId: string,
+  client: LlmClient,
 ): Promise<ExtractionResult> {
-  throw new Error('extractProse not implemented');
+  const raw = (await client.extract(input)) as RawExtracted[];
+  const events: NormalizedEvent[] = [];
+  const trace: ExtractionTraceEntry[] = [];
+  let n = 0;
+
+  for (const r of raw) {
+    const verified = quoteVerify(r.excerpt, input);
+    trace.push({ line: r.line, excerpt: r.excerpt, confidence: r.confidence, quoteVerified: verified });
+    if (!verified) continue; // anti-hallucination: no excerpt match -> drop
+
+    const facts: Facts = {};
+    if (r.occupancyObserved) facts.occupancy = r.occupancyObserved;
+    const signals: Signals = {
+      roomIdentifiable: r.roomIdentifiable ?? r.room !== null,
+      timeCritical: r.timeCritical ?? false,
+      safetyRelevant: r.safetyRelevant ?? false,
+      containsMetaInstruction: r.containsMetaInstruction ?? false,
+    };
+
+    events.push({
+      id: `ext_${String(++n).padStart(4, '0')}`,
+      hotelId,
+      timestamp: `${r.shiftDate}T00:00:00+08:00`, // prose lacks precise times; date is enough for shift bucketing
+      shiftDate: r.shiftDate,
+      source: 'prose',
+      room: r.room,
+      category: r.category || 'other',
+      status: r.status,
+      facts,
+      signals,
+      description: r.description,
+      sourceRef: { line: r.line, excerpt: r.excerpt, excerptEn: r.excerptEn, confidence: r.confidence },
+    });
+  }
+  return { events, trace };
 }
