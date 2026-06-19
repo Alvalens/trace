@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# builds
+dist/
+build/
+**/dist/
+client/dist/
+server/dist/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# test/coverage
+coverage/
+**/coverage/
+
+# vite/tsc caches
+*.tsbuildinfo
+**/*.tsbuildinfo
