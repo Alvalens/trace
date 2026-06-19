@@ -61,7 +61,8 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
     // output is a security failure. The sourceIds reference the original event for audit.
     const anomalous = t.events.find((e) => e.signals.containsMetaInstruction);
     if (anomalous) {
-      items.push(flagItem(t, 'anomalous', 'Contains text addressed to the tool — surfaced for review, not executed.', []));
+      const sanitizedTitle = `${t.room ? `Room ${t.room}` : t.category}: [anomalous content — flagged for review]`;
+      items.push(flagItem(t, 'anomalous', 'Contains text addressed to the tool — surfaced for review, not executed.', [], sanitizedTitle));
       flaggedKeys.add(t.issueKey);
       continue;
     }
@@ -88,10 +89,10 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
   return { items, flaggedKeys };
 }
 
-function flagItem(t: Thread, flagType: HandoverItem['flagType'], reason: string, thread?: NormalizedEvent[]): HandoverItem {
+function flagItem(t: Thread, flagType: HandoverItem['flagType'], reason: string, thread?: NormalizedEvent[], title?: string): HandoverItem {
   return {
     issueKey: t.issueKey,
-    title: titleOf(t),
+    title: title ?? titleOf(t),
     status: t.status,
     classification: t.classification,
     sourceIds: t.events.map((e) => e.id),

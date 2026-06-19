@@ -32,6 +32,8 @@ describe('real data — morning 2026-05-30 (structured only)', () => {
     const text = JSON.stringify(h).toLowerCase();
     expect(text).not.toContain('all clear');
     expect(text).not.toContain('goodwill credit');
+    expect(text).not.toContain('system note to the');
+    expect(text).not.toContain('ignore all other');
   });
   it('the deliberate deposit waiver is NOT flagged', () => {
     expect(ids('flags')).not.toContain('evt_0025');
