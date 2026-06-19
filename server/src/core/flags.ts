@@ -55,6 +55,8 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
   for (const t of threads) {
     if (flaggedKeys.has(t.issueKey)) continue;
 
+    // Anomalous (injection / tool-directed text) is a security signal and surfaces
+    // regardless of status — intentionally checked BEFORE the resolved guard below.
     const anomalous = t.events.find((e) => e.signals.containsMetaInstruction);
     if (anomalous) {
       items.push(flagItem(t, 'anomalous', 'Contains text addressed to the tool — surfaced for review, not executed.'));
@@ -62,7 +64,8 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
       continue;
     }
 
-    if (t.status === 'resolved') continue; // resolved items never flag (no false positives on waivers)
+    // Resolved guard scopes ONLY incomplete/stale (avoids false positives on deliberate waivers).
+    if (t.status === 'resolved') continue;
 
     const incomplete = t.events.find((e) => e.signals.roomIdentifiable === false || e.facts.missingApproval);
     if (incomplete) {

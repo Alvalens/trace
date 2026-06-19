@@ -86,6 +86,9 @@ Determine flags in `core/flags.ts` from normalized `facts`:
 
 **Guard against false-positive flags:** a deliberately-stated exception (e.g. a deposit intentionally
 waived, noted as such in the data) is **not** a flag. A flag requires a real gap, not an expected one.
+Resolved threads are therefore exempt from *incomplete*/*stale* flags. **Anomalous (injection /
+tool-directed text) is the exception**: it surfaces regardless of status — a security signal, not a
+gap — so it is checked before the resolved guard.
 
 ## The narrative renderer (if built) — sandbox constraints
 
