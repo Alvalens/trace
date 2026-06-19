@@ -1,0 +1,8 @@
+{"time":"2026-06-19T16:23:00.542Z","count":26,"event":"structured.loaded","hotel":"lumen-sg","level":"info","path":"data/events.json"}
+{"time":"2026-06-19T16:23:00.548Z","event":"server.started","level":"info","port":8080}
+{"time":"2026-06-19T16:23:45.714Z","event":"ingest.done","extracted":9,"hotel":"lumen-sg","level":"info","unverified":0}
+{"time":"2026-06-19T16:23:45.719Z","event":"request","level":"info","method":"POST","ms":29609,"path":"/ingest/lumen-sg","status":200}
+{"time":"2026-06-19T16:24:00.394Z","counts":{"critical":2,"flags":4,"info":7,"pending":3},"date":"2026-05-28","event":"handover.served","eventsConsidered":21,"hotel":"lumen-sg","level":"info"}
+{"time":"2026-06-19T16:24:00.397Z","event":"request","level":"info","method":"GET","ms":55,"path":"/handover/lumen-sg","status":200}
+{"time":"2026-06-19T16:24:42.425Z","counts":{"critical":3,"flags":8,"info":11,"pending":3},"date":"2026-05-30","event":"handover.served","eventsConsidered":35,"hotel":"lumen-sg","level":"info"}
+{"time":"2026-06-19T16:24:42.426Z","event":"request","level":"info","method":"GET","ms":2,"path":"/handover/lumen-sg","status":200}
