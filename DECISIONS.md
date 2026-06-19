@@ -32,6 +32,13 @@ TypeScript + Express, deployed to Cloud Run from source (buildpacks, no Docker).
 - **The LLM narrative renderer.** I rejected putting a model on the output path: a deterministic, ordered
   bucket layout already hits the 60-second bar, and a model on output re-opens the prompt-injection surface
   the data tests. Moved to hours 3 to 6 (see below) as a sandboxed, source-id-preserving step.
+- **AI-driven categorization.** I constrain categories to a fixed canonical enum: the model picks from the
+  list and code coerces anything off-list to `other`. A freer approach, letting the model derive or cluster
+  categories from the text, would generalize better to messy, abstract logs across hundreds of hotels where
+  a fixed list eventually will not fit. I skipped it because an unconstrained vocabulary is exactly what
+  broke threading in testing (invented names split one issue into two), and making it safe needs prompt
+  experimentation and an eval set I did not have time for. The fixed enum is the safe two-hour choice; the
+  looser, better-generalizing version is an hours 3 to 6 item.
 - **Cross-type thread merging.** A no-show charge (`no_show`) and its later guest dispute (`finance_note`)
   are the same real issue but stay separate threads, because linking them needs semantic judgment beyond
   room + category. I left it honest-but-separate rather than guess.
@@ -128,6 +135,10 @@ schema and either verified or normalized by deterministic code.
 - **RAG or chunking for scale.** A whole-file prompt is fine for one night. For long or batched logs,
   chunk the input and retrieve only relevant prior context, and render inline citations (excerpt beside the
   English) in the handover and a bilingual `/debug` review surface.
+- **AI-driven categorization with guardrails.** With an eval set and time to tune prompts, let the model
+  propose categories (or map text onto a learned/embedding-based taxonomy) for logs that do not fit the
+  fixed enum, keeping the verify-or-coerce guardrail so the vocabulary can grow across hotels without
+  re-opening the invented-category bug. This is the experiment I would not run unmeasured in two hours.
 - **Semantic cross-type thread linking** (no-show to dispute): let the model propose a shared thread-key,
   then verify it, closing the one reconciliation gap I left.
 - More **adversarial injection tests**, plus auth and rate-limiting on `/ingest`.
