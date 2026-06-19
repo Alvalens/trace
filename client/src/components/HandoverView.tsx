@@ -51,6 +51,12 @@ export function HandoverView({
 
   return (
     <div className="space-y-4">
+      {!data.meta.proseNightIngested && (
+        <Alert>
+          <AlertTitle>Prose night not ingested</AlertTitle>
+          <AlertDescription>Paste the free-text night below to complete this handover.</AlertDescription>
+        </Alert>
+      )}
       {BUCKETS.map(({ key, label, Icon }) => {
         const items = data.buckets[key] ?? []
         return (
@@ -67,7 +73,10 @@ export function HandoverView({
                 <div key={item.issueKey} className="rounded-md border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{item.title}</span>
-                    <Badge variant="outline">{item.status}</Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">{item.status}</Badge>
+                      <Badge variant="secondary">{item.classification.replace('_', ' ')}</Badge>
+                    </div>
                   </div>
                   {item.reason && (
                     <p className="text-muted-foreground mt-1 text-sm">{item.reason}</p>
