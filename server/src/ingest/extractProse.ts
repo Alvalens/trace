@@ -4,6 +4,7 @@
 // See .claude/rules/grounding-and-ai.md.
 
 import type { Facts, NormalizedEvent, Signals, Status } from '../core/types.js';
+import { CANONICAL_CATEGORIES } from '../core/normalize.js';
 
 /** Minimal LLM seam so the extractor is mockable in tests (clean-code rules). */
 export interface LlmClient {
@@ -37,7 +38,6 @@ interface RawExtracted {
   room: string | null;
   category: string;
   status: Status;
-  shiftDate: string;
   description: string;
   excerpt: string;
   excerptEn?: string;
@@ -50,13 +50,41 @@ interface RawExtracted {
   containsMetaInstruction?: boolean;
 }
 
+interface ModelOutput {
+  shiftDate?: string;
+  events: RawExtracted[];
+}
+
+function isModelOutput(v: unknown): v is ModelOutput {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'events' in v &&
+    Array.isArray((v as { events: unknown }).events)
+  );
+}
+
+const CANONICAL_SET: ReadonlySet<string> = new Set<string>(CANONICAL_CATEGORIES);
+
 export async function extractProse(
   input: string,
   hotelId: string,
   client: LlmClient,
+  overrideDate?: string,
 ): Promise<ExtractionResult> {
   const extracted = await client.extract(input);
-  const raw: RawExtracted[] = Array.isArray(extracted) ? (extracted as RawExtracted[]) : [];
+
+  if (!isModelOutput(extracted)) {
+    return { events: [], trace: [] };
+  }
+
+  const parsed: ModelOutput = extracted;
+  const shiftDate = overrideDate ?? (parsed.shiftDate?.trim() || undefined);
+  if (!shiftDate) {
+    throw new Error('could not resolve prose shift date');
+  }
+
+  const raw: RawExtracted[] = parsed.events;
   const events: NormalizedEvent[] = [];
   const trace: ExtractionTraceEntry[] = [];
   let n = 0;
@@ -75,14 +103,17 @@ export async function extractProse(
       containsMetaInstruction: r.containsMetaInstruction ?? false,
     };
 
+    // Defensively coerce any non-canonical category to 'other'
+    const category = CANONICAL_SET.has(r.category) ? r.category : 'other';
+
     events.push({
       id: `ext_${String(++n).padStart(4, '0')}`,
       hotelId,
-      timestamp: `${r.shiftDate}T00:00:00+08:00`, // prose lacks precise times; date is enough for shift bucketing
-      shiftDate: r.shiftDate,
+      timestamp: `${shiftDate}T00:00:00+08:00`, // single shift date applied to all events
+      shiftDate,
       source: 'prose',
       room: r.room,
-      category: r.category || 'other',
+      category,
       status: r.status,
       facts,
       signals,

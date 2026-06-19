@@ -25,13 +25,15 @@ export function createApp(): express.Express {
   // Ingestion trigger: paste/upload the prose night -> extract once -> store.
   app.post('/ingest/:hotel', async (req: Request, res: Response, next: NextFunction) => {
     const { hotel } = req.params;
-    const text: unknown = (req.body as { text?: unknown })?.text;
+    const body = req.body as { text?: unknown; date?: unknown };
+    const text: unknown = body.text;
     if (typeof text !== 'string' || text.trim() === '') {
       res.status(400).json({ error: 'body.text (prose markdown) is required' });
       return;
     }
+    const overrideDate = typeof body.date === 'string' && body.date.trim() !== '' ? body.date.trim() : undefined;
     try {
-      const { events, trace } = await extractProse(text, hotel, gemini);
+      const { events, trace } = await extractProse(text, hotel, gemini, overrideDate);
       addEvents(hotel, events);
       setLastRun(hotel, new Date().toISOString(), trace);
       log('info', 'ingest.done', { hotel, extracted: events.length, dropped: trace.filter((t) => !t.quoteVerified).length });

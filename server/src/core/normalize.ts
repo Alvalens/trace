@@ -25,6 +25,15 @@ export const CATEGORY_BY_TYPE: Record<string, string> = {
   damage_report: 'damage',
 };
 
+/** Single source of truth for the canonical category vocabulary used by both structured and prose extraction. */
+export const CANONICAL_CATEGORIES = [
+  'arrival', 'maintenance', 'facilities', 'compliance', 'complaint',
+  'keycard', 'verification', 'deposit', 'finance', 'no_show',
+  'incident', 'checkout', 'note', 'damage', 'other',
+] as const;
+
+export type CanonicalCategory = (typeof CANONICAL_CATEGORIES)[number];
+
 const STATUS_BY_RAW: Record<string, Status> = {
   resolved: 'resolved',
   unresolved: 'open',
