@@ -57,9 +57,11 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
 
     // Anomalous (injection / tool-directed text) is a security signal and surfaces
     // regardless of status — intentionally checked BEFORE the resolved guard below.
+    // The thread is deliberately omitted: reproducing adversarial content in handover
+    // output is a security failure. The sourceIds reference the original event for audit.
     const anomalous = t.events.find((e) => e.signals.containsMetaInstruction);
     if (anomalous) {
-      items.push(flagItem(t, 'anomalous', 'Contains text addressed to the tool — surfaced for review, not executed.'));
+      items.push(flagItem(t, 'anomalous', 'Contains text addressed to the tool — surfaced for review, not executed.', []));
       flaggedKeys.add(t.issueKey);
       continue;
     }
@@ -86,7 +88,7 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
   return { items, flaggedKeys };
 }
 
-function flagItem(t: Thread, flagType: HandoverItem['flagType'], reason: string): HandoverItem {
+function flagItem(t: Thread, flagType: HandoverItem['flagType'], reason: string, thread?: NormalizedEvent[]): HandoverItem {
   return {
     issueKey: t.issueKey,
     title: titleOf(t),
@@ -95,6 +97,6 @@ function flagItem(t: Thread, flagType: HandoverItem['flagType'], reason: string)
     sourceIds: t.events.map((e) => e.id),
     flagType,
     reason,
-    thread: t.events,
+    thread: thread ?? t.events,
   };
 }

@@ -51,9 +51,18 @@ const TIME_CRITICAL_RE = /\b(deadline|\d+\s*hours?|before checkout|checks? out t
 const META_RE = /\b(system note to the|ignore (all|other|previous)|report .* all clear|mark .* approved|disregard|goodwill credit)\b/i;
 const MISSING_APPROVAL_RE = /\b(no (manager )?approval|no photos?|without approval)\b/i;
 
-function deriveSignals(description: string, room: string | null): Signals {
+/**
+ * Categories that are inherently area/hotel-level: a null room is expected and
+ * does NOT mean the item is "blocked by missing room." Incomplete-flag skips these.
+ */
+const AREA_LEVEL_CATEGORIES = new Set(['compliance', 'facilities', 'finance', 'note', 'no_show']);
+
+function deriveSignals(description: string, room: string | null, category: string): Signals {
+  // roomIdentifiable: true when (a) a specific room is known, OR
+  // (b) the category is area-level (no specific room is required to act).
+  const roomIdentifiable = room !== null || AREA_LEVEL_CATEGORIES.has(category);
   return {
-    roomIdentifiable: room !== null,
+    roomIdentifiable,
     timeCritical: TIME_CRITICAL_RE.test(description),
     safetyRelevant: SAFETY_RE.test(description),
     containsMetaInstruction: META_RE.test(description),
@@ -86,7 +95,7 @@ export function normalizeStructured(raw: RawStructuredEvent, hotelId: string): N
     rawType: raw.type,
     status: STATUS_BY_RAW[raw.status] ?? 'open',
     facts: deriveFacts(raw.type, raw.description),
-    signals: deriveSignals(raw.description, room),
+    signals: deriveSignals(raw.description, room, category),
     description: raw.description,
     sourceRef: { eventId: raw.id },
   };

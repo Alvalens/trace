@@ -5,9 +5,8 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import fs from 'node:fs';
 import path from 'node:path';
 import { log } from './logging.js';
-// Wired in during the build phase:
-// import { getEvents, hasProse } from '../ingest/store.js';
-// import { buildHandover } from '../core/handover.js';
+import { getEvents, hasProse } from '../ingest/store.js';
+import { buildHandover } from '../core/handover.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -34,10 +33,17 @@ export function createApp(): express.Express {
   app.get('/handover/:hotel', (req: Request, res: Response) => {
     const { hotel } = req.params;
     const date = typeof req.query.date === 'string' ? req.query.date : undefined;
-    log('info', 'handover.requested', { hotel, date });
-    // TODO(build): const handover = buildHandover(getEvents(hotel),
-    //   { hotel, date, proseNightIngested: hasProse(hotel) });
-    res.status(501).json({ error: 'handover not implemented yet', hotel, date });
+    const events = getEvents(hotel);
+    if (events.length === 0) {
+      res.status(404).json({ error: `unknown hotel: ${hotel}` });
+      return;
+    }
+    const handover = buildHandover(events, { hotel, date, proseNightIngested: hasProse(hotel) });
+    log('info', 'handover.served', {
+      hotel, date: handover.date, eventsConsidered: handover.meta.eventsConsidered,
+      counts: Object.fromEntries(Object.entries(handover.buckets).map(([k, v]) => [k, v.length])),
+    });
+    res.json(handover);
   });
 
   app.get('/debug/last-run', (_req: Request, res: Response) => {
