@@ -1,7 +1,8 @@
 # DECISIONS
 
 > Trace: a night-shift handover service for Vouch. ~2 hours, one sitting.
-> _Start/stop: (fill in your actual times)._
+> _Start/stop: began ~8:20, core code done ~10:00; after a short break, ~30 min more, then deploy and
+> ~30 min of testing and fixes. Not strictly one unbroken sitting, but close to the ~2 hours of focused work._
 
 ## What I built
 
