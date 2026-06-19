@@ -5,8 +5,13 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import fs from 'node:fs';
 import path from 'node:path';
 import { log } from './logging.js';
-import { getEvents, hasProse } from '../ingest/store.js';
+import { getEvents, hasProse, addEvents } from '../ingest/store.js';
 import { buildHandover } from '../core/handover.js';
+import { extractProse } from '../ingest/extractProse.js';
+import { GeminiClient } from '../ingest/gemini.js';
+import { setLastRun, getLastRun } from '../ingest/lastRun.js';
+
+const gemini = new GeminiClient();
 
 export function createApp(): express.Express {
   const app = express();
@@ -17,16 +22,22 @@ export function createApp(): express.Express {
   });
 
   // Ingestion trigger: paste/upload the prose night -> extract once -> store.
-  app.post('/ingest/:hotel', (req: Request, res: Response) => {
+  app.post('/ingest/:hotel', async (req: Request, res: Response, next: NextFunction) => {
     const { hotel } = req.params;
     const text: unknown = (req.body as { text?: unknown })?.text;
     if (typeof text !== 'string' || text.trim() === '') {
       res.status(400).json({ error: 'body.text (prose markdown) is required' });
       return;
     }
-    log('info', 'ingest.requested', { hotel, chars: text.length });
-    // TODO(build): extractProse(text, hotel, gemini) -> quoteVerify -> addEvents -> return trace
-    res.status(501).json({ error: 'ingestion not implemented yet' });
+    try {
+      const { events, trace } = await extractProse(text, hotel, gemini);
+      addEvents(hotel, events);
+      setLastRun(hotel, new Date().toISOString(), trace);
+      log('info', 'ingest.done', { hotel, extracted: events.length, dropped: trace.filter((t) => !t.quoteVerified).length });
+      res.json({ events, trace });
+    } catch (err) {
+      next(err);
+    }
   });
 
   // Query: reconciled, action-first handover for a morning. Pure, deterministic.
@@ -47,7 +58,12 @@ export function createApp(): express.Express {
   });
 
   app.get('/debug/last-run', (_req: Request, res: Response) => {
-    res.status(501).json({ error: 'debug trace not implemented yet' });
+    const last = getLastRun();
+    if (!last) {
+      res.status(404).json({ error: 'no extraction has run yet' });
+      return;
+    }
+    res.json(last);
   });
 
   // Serve the built React client in production, if present (single-container deploy).
