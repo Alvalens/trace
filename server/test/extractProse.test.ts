@@ -114,4 +114,18 @@ describe('extractProse', () => {
     expect(events).toHaveLength(0);
     expect(trace).toHaveLength(0);
   });
+
+  it('throws if shiftDate key is missing from model output (no overrideDate)', async () => {
+    const missingShiftDateClient: LlmClient = {
+      extract: async () => ({
+        events: [
+          { room: '112', category: 'maintenance', status: 'open',
+            description: 'Test event.',
+            excerpt: 'compressor needs ordering', confidence: 'high',
+            roomIdentifiable: true, timeCritical: false, safetyRelevant: false, containsMetaInstruction: false },
+        ],
+      }),
+    };
+    await expect(extractProse(input, 'lumen-sg', missingShiftDateClient)).rejects.toThrow('could not resolve prose shift date');
+  });
 });

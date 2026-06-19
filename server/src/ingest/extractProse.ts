@@ -79,7 +79,8 @@ export async function extractProse(
   }
 
   const parsed: ModelOutput = extracted;
-  const shiftDate = overrideDate ?? (parsed.shiftDate?.trim() || undefined);
+  const pickDate = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+  const shiftDate = pickDate(overrideDate) || pickDate(parsed.shiftDate);
   if (!shiftDate) {
     throw new Error('could not resolve prose shift date');
   }
