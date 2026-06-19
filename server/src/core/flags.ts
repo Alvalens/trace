@@ -37,6 +37,9 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
     const inHouse = evs.find((e) => e.facts.occupancy === 'in_house');
     const empty = evs.find((e) => e.facts.occupancy === 'empty');
     if (inHouse && empty) {
+      // Never reproduce adversarial text in handover output: filter injection-bearing events
+      // from the thread (their ids are still captured in sourceIds for audit).
+      const safeThread = [empty, inHouse].filter((e) => !e.signals.containsMetaInstruction);
       items.push({
         issueKey: `${room}:contradiction`,
         title: `Room ${room}: conflicting occupancy (in-house vs observed empty)`,
@@ -45,7 +48,7 @@ export function detectFlags(threads: Thread[], targetShiftDate: string): FlagRes
         sourceIds: [inHouse.id, empty.id],
         flagType: 'contradiction',
         reason: `${inHouse.id} shows the room in-house; ${empty.id} observed it empty — verify before billing.`,
-        thread: [empty, inHouse],
+        thread: safeThread,
       });
       for (const t of threads) if (t.room === room) flaggedKeys.add(t.issueKey);
     }

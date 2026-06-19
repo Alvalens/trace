@@ -36,4 +36,12 @@ describe('extractProse', () => {
     expect(events).toHaveLength(0);
     expect(trace[0].quoteVerified).toBe(false);
   });
+
+  // Fix 4 regression: malformed (non-array) model response degrades gracefully.
+  it('treats a non-array model response as empty (defensive parse guard)', async () => {
+    const malformed: LlmClient = { extract: async () => ({ error: 'bad response' }) };
+    const { events, trace } = await extractProse(input, 'lumen-sg', malformed);
+    expect(events).toHaveLength(0);
+    expect(trace).toHaveLength(0);
+  });
 });

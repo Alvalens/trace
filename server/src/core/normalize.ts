@@ -48,7 +48,7 @@ export function issueKey(room: string | null, category: string): string {
 
 const SAFETY_RE = /\b(safe|passport|ambulance|fire|flood|injur|unwell|medical|locked in)\b/i;
 const TIME_CRITICAL_RE = /\b(deadline|\d+\s*hours?|before checkout|checks? out tomorrow|flight|asap|urgent|first thing)\b/i;
-const META_RE = /\b(system note to the|ignore (all|other|previous)|report .* all clear|mark .* approved|disregard|goodwill credit)\b/i;
+const META_RE = /\b(system note to the|ignore (all|other|previous)|disregard|goodwill credit)\b/i;
 const MISSING_APPROVAL_RE = /\b(no (manager )?approval|no photos?|without approval)\b/i;
 
 /**

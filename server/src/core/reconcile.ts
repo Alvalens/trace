@@ -7,11 +7,9 @@ import { issueKey } from './normalize.js';
 
 /**
  * Group events into threads keyed by `room:category`, newest event first.
- * Current status = newest event. Classification is assigned relative to the
- * most recent shift on/before the target morning.
- *
- * TODO(build): implement grouping + classification (new_tonight / still_open /
- * newly_resolved / resolved_earlier). Cover the data fixtures in plan.md §3.
+ * Current status = newest event's status. Classification relative to the
+ * target shift date: new_tonight (opened tonight), still_open (older, unresolved),
+ * newly_resolved (resolved tonight), or resolved_earlier (resolved before tonight).
  */
 export function reconcileThreads(events: NormalizedEvent[], targetShiftDate: string): Thread[] {
   const groups = new Map<string, NormalizedEvent[]>();

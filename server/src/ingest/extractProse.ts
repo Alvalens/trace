@@ -55,7 +55,8 @@ export async function extractProse(
   hotelId: string,
   client: LlmClient,
 ): Promise<ExtractionResult> {
-  const raw = (await client.extract(input)) as RawExtracted[];
+  const extracted = await client.extract(input);
+  const raw: RawExtracted[] = Array.isArray(extracted) ? (extracted as RawExtracted[]) : [];
   const events: NormalizedEvent[] = [];
   const trace: ExtractionTraceEntry[] = [];
   let n = 0;

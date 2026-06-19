@@ -38,4 +38,23 @@ describe('detectFlags', () => {
     const threads = reconcileThreads([ev({ id: 'ok', room: '230', category: 'finance', status: 'resolved', shiftDate: T })], T);
     expect(detectFlags(threads, T).items).toHaveLength(0);
   });
+
+  // Fix 2 regression: contradiction thread must not include injection-bearing events.
+  it('contradiction: filters injection-bearing events from thread, keeps sourceIds intact', () => {
+    const threads = reconcileThreads([
+      ev({ id: 'in', room: '214', category: 'arrival', status: 'resolved', shiftDate: '2026-05-27',
+           facts: { occupancy: 'in_house' }, signals: { containsMetaInstruction: true } }),
+      ev({ id: 'empty', room: '214', category: 'note', status: 'open', shiftDate: '2026-05-28',
+           facts: { occupancy: 'empty' } }),
+    ], T);
+    const { items } = detectFlags(threads, T);
+    const c = items.find((i) => i.flagType === 'contradiction');
+    expect(c).toBeDefined();
+    // sourceIds still captures both events for audit
+    expect(c?.sourceIds.sort()).toEqual(['empty', 'in']);
+    // thread must NOT include the injection-bearing event
+    expect(c?.thread.every((e) => !e.signals.containsMetaInstruction)).toBe(true);
+    // only the safe event remains in the thread
+    expect(c?.thread.map((e) => e.id)).toEqual(['empty']);
+  });
 });
