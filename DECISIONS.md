@@ -142,7 +142,9 @@ schema and either verified or normalized by deterministic code.
   re-opening the invented-category bug. This is the experiment I would not run unmeasured in two hours.
 - **Semantic cross-type thread linking** (no-show to dispute): let the model propose a shared thread-key,
   then verify it, closing the one reconciliation gap I left.
-- More **adversarial injection tests**, plus auth and rate-limiting on `/ingest`.
+- More **adversarial injection tests**, plus auth on `/ingest`. (Basic abuse guards are already in:
+  a per-IP rate limit — strict on the model-backed `/ingest` path — plus body-size and prose
+  character caps. Auth and a shared rate-limit store for multi-instance are the remaining items.)
 
 ## One thing that surprised me
 

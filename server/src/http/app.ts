@@ -11,12 +11,17 @@ import { extractProse } from '../ingest/extractProse.js';
 import { GeminiClient } from '../ingest/gemini.js';
 import { setLastRun, getLastRun } from '../ingest/lastRun.js';
 import { renderHandoverHtml } from './htmlView.js';
+import { globalLimiter, ingestLimiter, MAX_BODY_SIZE, MAX_PROSE_CHARS } from './limits.js';
 
 const gemini = new GeminiClient();
 
 export function createApp(): express.Express {
   const app = express();
-  app.use(express.json({ limit: '1mb' }));
+  // Cloud Run terminates TLS one proxy hop in front of us; trust that single hop so rate-limit
+  // keys on the real client IP from X-Forwarded-For.
+  app.set('trust proxy', 1);
+  app.use(express.json({ limit: MAX_BODY_SIZE }));
+  app.use(globalLimiter);
 
   // Request log: every call gets one line with method / path / status / latency — so a bad
   // handover can be traced to the exact request that produced it. See logging.ts.
@@ -33,12 +38,16 @@ export function createApp(): express.Express {
   });
 
   // Ingestion trigger: paste/upload the prose night -> extract once -> store.
-  app.post('/ingest/:hotel', async (req: Request, res: Response, next: NextFunction) => {
+  app.post('/ingest/:hotel', ingestLimiter, async (req: Request, res: Response, next: NextFunction) => {
     const { hotel } = req.params;
     const body = req.body as { text?: unknown; date?: unknown };
     const text: unknown = body.text;
     if (typeof text !== 'string' || text.trim() === '') {
       res.status(400).json({ error: 'body.text (prose markdown) is required' });
+      return;
+    }
+    if (text.length > MAX_PROSE_CHARS) {
+      res.status(413).json({ error: `body.text exceeds ${MAX_PROSE_CHARS} characters` });
       return;
     }
     const overrideDate = typeof body.date === 'string' && body.date.trim() !== '' ? body.date.trim() : undefined;
@@ -95,6 +104,11 @@ export function createApp(): express.Express {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    // Body parser rejects an oversized payload before our handlers run; report it as 413, not 500.
+    if (err instanceof Error && (err as { type?: string }).type === 'entity.too.large') {
+      res.status(413).json({ error: `request body exceeds ${MAX_BODY_SIZE}` });
+      return;
+    }
     log('error', 'unhandled', { message: err instanceof Error ? err.message : String(err) });
     res.status(500).json({ error: 'internal error' });
   });

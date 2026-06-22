@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ingestProse, apiError } from '@/lib/api'
+import { ingestProse, apiError, MAX_PROSE_CHARS } from '@/lib/api'
 import type { IngestResult } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,10 +35,14 @@ export function IngestForm({ hotel, onIngested }: { hotel: string; onIngested: (
       <CardContent className="space-y-3">
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value.slice(0, MAX_PROSE_CHARS))}
+          maxLength={MAX_PROSE_CHARS}
           placeholder="Paste the free-text night log (markdown, any language)…"
           className="min-h-40 font-mono text-sm"
         />
+        <div className="text-muted-foreground text-right text-xs tabular-nums">
+          {text.length.toLocaleString()} / {MAX_PROSE_CHARS.toLocaleString()}
+        </div>
         <Button onClick={submit} disabled={busy || !text.trim()}>
           {busy ? 'Extracting…' : 'Extract & ingest'}
         </Button>

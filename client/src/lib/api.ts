@@ -4,6 +4,9 @@ import type { Handover, IngestResult } from '@/types'
 
 const http = axios.create({ baseURL: '/', timeout: 30000 })
 
+/** Max prose length accepted by POST /ingest — mirrors the server's MAX_PROSE_CHARS. */
+export const MAX_PROSE_CHARS = 50_000
+
 /** Extract a human-readable message from an axios error. */
 export function apiError(e: unknown): string {
   if (axios.isAxiosError(e)) {
